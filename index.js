@@ -16,7 +16,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 const corsOptions = {
-    origin: ['http://localhost:3000', 'https://quiz-app-tushar.web.app'],
+    origin: 'https://quiz-app-tushar.web.app', //'http://localhost:3000' 'https://quiz-app-tushar.web.app'],
     credentials: true,
 }
 app.use(cors(corsOptions));
