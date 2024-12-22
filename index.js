@@ -16,10 +16,12 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 const corsOptions = {
-    origin: 'https://quiz-app-tushar.web.app', //'http://localhost:3000' 'https://quiz-app-tushar.web.app'],
+    origin: 'http://localhost:3000', //'http://localhost:3000' 'https://quiz-app-tushar.web.app'],
     credentials: true,
 }
-app.use(cors(corsOptions));
+// app.use(cors(corsOptions));
+app.use(cors());
+
 
 // // Route to set the cookie
 app.post("/set-cookie", (req, res) => {
