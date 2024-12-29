@@ -7,7 +7,7 @@ import jwt from "jsonwebtoken";
 export const register = async (req, res) => {
     try {
         const { name, email, password, reyTypePassword } = req.body;
-        console.log(name, email, password, reyTypePassword)
+        // console.log(name, email, password, reyTypePassword)
         if (!name || !email || !password || !reyTypePassword) {
             return res.status(400).json({ message: "Something went missing.", success: false });
         }
@@ -99,7 +99,7 @@ export const googleLogin = async (req, res) => {
 export const login = async (req, res) => {
     try {
         const { email, password, } = req.body;
-        console.log(req.body, email, password)
+        // console.log(req.body, email, password)
         if (!email || !password) {
             return res.status(400).json({ message: "Something went missing.", success: false });
         }
@@ -119,7 +119,7 @@ export const login = async (req, res) => {
 
         const token = await jwt.sign(tokenData, process.env.SECRET_KEY, { expiresIn: '10d' });
 
-        console.log('JWTToken', token);
+        // console.log('JWTToken', token);
         return res.status(200).cookie('JWTToken', token, { maxAge: 10 * 24 * 3600 * 1000, httpOnly: true, secure: true, sameSite: "none", }).json({
             message: `Welcome back ${existUser.name}`,
             success: true,
@@ -138,7 +138,7 @@ export const login = async (req, res) => {
 export const authCheck = (req, res) => {
     // const userId = req.id;
     const userId = req.id;
-    console.log(userId)
+    // console.log(userId)
     try {
         if (userId)
             return res.status(200).json({ authenticated: true, user: userId, success: true });
@@ -152,7 +152,7 @@ export const authCheck = (req, res) => {
 
 export const performance = async (req, res) => {
     const userId = req.id;
-    console.log(userId)
+    // console.log(userId)
 
     // Fetch the user and check for currentQuiz
     const user = await User.findById(userId)

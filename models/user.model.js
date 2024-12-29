@@ -25,10 +25,7 @@ const userSchema = new mongoose.Schema({
         questionsAns: {
             type: [
                 {
-                    // quizId: {
-                    //     type: mongoose.Schema.Types.ObjectId,
-                    //     ref: 'Quiz'
-                    // },
+
                     questionId: {
                         type: mongoose.Schema.Types.ObjectId,
                         ref: 'Question'
@@ -52,6 +49,20 @@ const userSchema = new mongoose.Schema({
             wrongCount: { type: 'number' },
             quizPerformancePercentage: { type: 'number' },
             // }
+            questionsAns: {
+                type: [
+                    {
+
+                        questionId: {
+                            type: mongoose.Schema.Types.ObjectId,
+                            ref: 'Question'
+                        },
+                        ansOption: {
+                            type: 'number',
+                        }
+                    }
+                ]
+            },
         }],
         overAllPerformances: {
             type: 'number'

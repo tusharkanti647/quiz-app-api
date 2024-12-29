@@ -26,13 +26,20 @@ export const getQuizList = async (req, res) => {
 export const startQuiz = async (req, res) => {
     const quizId = req.query.quizId;
     const userId = req.id; // Get userId from cookies
-    console.log("userId", userId, 'uuu', quizId)
+    let isCompleted = false;
+
+    const completedQuiz = req.completedQuiz;
+    if (completedQuiz) {
+        isCompleted = true
+    }
+
+
+    // console.log("userId", userId, 'uuu', quizId)
     if (!quizId) {
         return res.status(400).json({ success: false, message: "Quiz ID required." });
     }
 
     try {
-
         // Fetch user to check currentQuiz details
         const user = await User.findById(userId);
 
@@ -56,21 +63,21 @@ export const startQuiz = async (req, res) => {
         // let populatedQuestions;
         //populat the quiz question
         if (quiz && quiz.question) {
-            let isQuizIsAttempted = false;
-            user?.userPerformances?.completedQuiz.map((ele) => {
-                if (ele.quizId.toString() == quizId.toString()) {
-                    isQuizIsAttempted = true;
-                }
-            })
-            if (isQuizIsAttempted) {
-                return res.status(200).json({ success: true, message: "You have attempted the quiz.", quizIsNotStart: true });
-            }
+            // let isQuizIsAttempted = false;
+            // user?.userPerformances?.completedQuiz.map((ele) => {
+            //     if (ele.quizId.toString() == quizId.toString()) {
+            //         isQuizIsAttempted = true;
+            //     }
+            // })
+            // if (isQuizIsAttempted) {
+            //     return res.status(200).json({ success: true, message: "You have attempted the quiz.", quizIsNotStart: true });
+            // }
         } else {
             return res.status(404).json({ success: false, message: "Quiz or questions not found." });
         }
 
 
-        console.log(quiz.question)
+        // console.log(quiz.question)
         // Determine the first question and navigation IDs
         let categories1st = quiz.categories[0];
         let categories2nd = quiz.categories[1] || null;
@@ -79,7 +86,7 @@ export const startQuiz = async (req, res) => {
         // const nextQuestionId = quiz.question[1]?._id || null;
 
         const firstQuestion = await Question.findById(firstQuestionId);
-        console.log(firstQuestionId, nextQuestionId)
+        // console.log(firstQuestionId, nextQuestionId)
         // Update user's currentQuiz
         user.currentQuiz = {
             quizId: quizId,
@@ -90,6 +97,23 @@ export const startQuiz = async (req, res) => {
         };
         await user.save();
 
+        let completedQuizDetails = {}
+        if (isCompleted) {
+            for (let i = 0; i < completedQuiz.questionsAns.length; i++) {
+                let objEle = completedQuiz.questionsAns[i]
+
+                if (objEle.questionId.toString() === firstQuestion._id.toString()) {
+
+                    const question = await Question.findById(objEle.questionId);
+                    completedQuizDetails.userAnsOption = objEle.ansOption
+                    completedQuizDetails.ansOption = question.ansOption
+                    break;
+                }
+            }
+
+
+            completedQuizDetails.isQuizCompleted = true
+        }
         // Send response with the first question and navigation IDs
         res.status(200).json({
             success: true,
@@ -105,6 +129,7 @@ export const startQuiz = async (req, res) => {
             },
             questionList: quiz.question,
             categories: quiz.categories,
+            completedQuizDetails: completedQuizDetails
         });
 
     } catch (error) {
@@ -120,7 +145,16 @@ export const navigateQuestion = async (req, res) => {
     const { quizId, answer, reqQuestionId } = req.body; // `answer` corresponds to the current question
     const userId = req.id; // Assuming userId is extracted from cookies or authentication middleware
 
+
+
     try {
+        let isCompleted = false;
+
+        const completedQuiz = req.completedQuiz;
+        if (completedQuiz) {
+            isCompleted = true
+        }
+
         // Fetch the user and check for currentQuiz
         const user = await User.findById(userId) //.populate('currentQuiz.quizId');
 
@@ -130,6 +164,8 @@ export const navigateQuestion = async (req, res) => {
 
         const { currentQuiz } = user;
 
+        // console.log(currentQuiz)
+
         if (!currentQuiz || !currentQuiz.quizId.equals(quizId)) {
             return res.status(400).json({
                 success: false,
@@ -137,7 +173,7 @@ export const navigateQuestion = async (req, res) => {
             });
         }
 
-        const { currentQuestionId, nextQuestionId } = currentQuiz;
+        const { currentQuestionId, nextQuestionId, questionsAns } = currentQuiz;
 
         if (!currentQuestionId) {
             return res.status(400).json({
@@ -146,23 +182,24 @@ export const navigateQuestion = async (req, res) => {
             });
         }
 
-        // Update the user's answer for the current question
-        let ansIndex = user.currentQuiz.questionsAns.findIndex((arrElement) => {
-            // console.log('arrElement', arrElement, 'currentQuestionId', currentQuestionId)
-            return arrElement.questionId.toString() === currentQuestionId.toString()
-        })
+        if (isCompleted) {
+            // Update the user's answer for the current question
+            let ansIndex = user.currentQuiz.questionsAns.findIndex((arrElement) => {
+                // console.log('arrElement', arrElement, 'currentQuestionId', currentQuestionId)
+                return arrElement.questionId.toString() === currentQuestionId.toString()
+            })
 
-        if (ansIndex !== -1) {
-            console.log("length", user.currentQuiz.questionsAns.length)
-            user.currentQuiz.questionsAns[ansIndex].ansOption = answer;
-            console.log("length2", user.currentQuiz.questionsAns.length)
-        } else {
-            user.currentQuiz.questionsAns.push({
-                questionId: currentQuestionId,
-                ansOption: answer,
-            });
+            if (ansIndex !== -1) {
+                // console.log("length", user.currentQuiz.questionsAns.length)
+                user.currentQuiz.questionsAns[ansIndex].ansOption = answer;
+                // console.log("length2", user.currentQuiz.questionsAns.length)
+            } else {
+                user.currentQuiz.questionsAns.push({
+                    questionId: currentQuestionId,
+                    ansOption: answer,
+                });
+            }
         }
-
 
         const quiz = await Quiz.findById(quizId)  //.populate('question');
 
@@ -191,6 +228,24 @@ export const navigateQuestion = async (req, res) => {
         if (questionIndex === -1) {
             return res.status(404).json({ success: false, message: "Current question not found in quiz." });
         }
+
+        let completedQuizDetails = {}
+        if (isCompleted) {
+            for (let i = 0; i < completedQuiz.questionsAns.length; i++) {
+                let objEle = completedQuiz.questionsAns[i]
+
+                if (objEle.questionId.toString() === currentQuestionId.toString()) {
+                    const question = await Question.findById(objEle.questionId);
+                    // console.log('HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH', objEle.ansOption, question.ansOption)
+                    completedQuizDetails.userAnsOption = objEle.ansOption
+                    completedQuizDetails.ansOption = question.ansOption
+                    break;
+                }
+            }
+
+            completedQuizDetails.isQuizCompleted = true
+        }
+
 
         // If it's the last question, submit the quiz
         if (!nextQuestionId) {
@@ -225,6 +280,7 @@ export const navigateQuestion = async (req, res) => {
                 correctCount,
                 wrongCount,
                 quizPerformancePercentage: performancePercentage,
+                questionsAns
             });
 
 
@@ -251,7 +307,7 @@ export const navigateQuestion = async (req, res) => {
         // Otherwise, navigate to the next question
         const newPreviousQuestionId = currentQuestionId;
         const newCurrentQuestionId = nextQuestionId;
-        console.log(categoryKey, 'HHHH', quiz.categories.indexOf('categoryKey'))
+        // console.log(categoryKey, 'HHHH', quiz.categories.indexOf('categoryKey'))
         const nextCategory = quiz.categories[quiz.categories.indexOf(categoryKey) + 1] || null;
         let newNextQuestionId
 
@@ -306,6 +362,7 @@ export const navigateQuestion = async (req, res) => {
             categories: quiz.categories,
             category: newCategoryKey,
             questionsAns: currentQuiz.questionsAns,
+            completedQuizDetails: completedQuizDetails
         });
     } catch (error) {
         console.error("Error navigating question:", error);
@@ -318,6 +375,13 @@ export const navigatePreviousQuestion = async (req, res) => {
     const userId = req.id; // Assuming userId is extracted from cookies or authentication middleware
 
     try {
+        let isCompleted = false;
+
+        const completedQuiz = req.completedQuiz;
+        if (completedQuiz) {
+            isCompleted = true
+        }
+
         // Fetch the user and check for currentQuiz
         const user = await User.findById(userId)
 
@@ -349,13 +413,15 @@ export const navigatePreviousQuestion = async (req, res) => {
 
         // Update the user's answer for the current question
         let ansIndex = user.currentQuiz.questionsAns.findIndex((arrElement) => arrElement.questionId.toString() === currentQuestionId.toString())
-        if (ansIndex !== -1) {
-            user.currentQuiz.questionsAns[ansIndex].ansOption = answer;
-        } else {
-            user.currentQuiz.questionsAns.push({
-                questionId: currentQuestionId,
-                ansOption: answer,
-            });
+        if (isCompleted) {
+            if (ansIndex !== -1) {
+                user.currentQuiz.questionsAns[ansIndex].ansOption = answer;
+            } else {
+                user.currentQuiz.questionsAns.push({
+                    questionId: currentQuestionId,
+                    ansOption: answer,
+                });
+            }
         }
 
         const quiz = await Quiz.findById(quizId)  //.populate('question');
@@ -383,6 +449,24 @@ export const navigatePreviousQuestion = async (req, res) => {
             return res.status(404).json({ success: false, message: "Current question not found in quiz." });
         }
 
+        let completedQuizDetails = {}
+       
+        if (isCompleted) {
+            for (let i = 0; i < completedQuiz.questionsAns.length; i++) {
+                let objEle = completedQuiz.questionsAns[i]
+
+                if (objEle.questionId.toString() === currentQuestionId.toString()) {
+                    const question = await Question.findById(objEle.questionId);
+                    // console.log('HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH', objEle.ansOption, question.ansOption)
+                    completedQuizDetails.userAnsOption = objEle.ansOption
+                    completedQuizDetails.ansOption = question.ansOption
+                    break;
+                }
+            }
+
+            completedQuizDetails.isQuizCompleted = true
+        }
+        // console.log('FFFFFFFFFFFFFFFF', completedQuizDetails)
         if (!previousQuestionId) {
             await user.save();
 
@@ -407,6 +491,7 @@ export const navigatePreviousQuestion = async (req, res) => {
                 categories: quiz.categories,
                 category: categoryKey,
                 questionsAns: currentQuiz.questionsAns,
+                completedQuizDetails: completedQuizDetails,
             });
 
         }
@@ -417,7 +502,7 @@ export const navigatePreviousQuestion = async (req, res) => {
         const newCurrentQuestionId = previousQuestionId;
         const prevCategory = quiz.categories[quiz.categories.indexOf(categoryKey) - 1] || null;
         let newPreviousQuestionId
-        console.log('categoryKey', prevCategory, categoryKey)
+        // console.log('categoryKey', prevCategory, categoryKey)
         if (questionIndex - 2 >= 0) {
             newPreviousQuestionId = quiz.question.get(categoryKey)[questionIndex - 2]
         } else {
@@ -469,6 +554,7 @@ export const navigatePreviousQuestion = async (req, res) => {
             categories: quiz.categories,
             category: newPrevCategory,
             questionsAns: currentQuiz.questionsAns,
+            completedQuizDetails: completedQuizDetails
         });
 
     } catch (error) {
@@ -484,6 +570,13 @@ export const reloadQuestion = async (req, res) => {
     const userId = req.id; // Assuming userId is extracted from cookies or authentication middleware
 
     try {
+        let isCompleted = false;
+
+        const completedQuiz = req.completedQuiz;
+        if (completedQuiz) {
+            isCompleted = true
+        }
+
         // Fetch the user and check for currentQuiz
         const user = await User.findById(userId)
 
@@ -535,6 +628,23 @@ export const reloadQuestion = async (req, res) => {
             return res.status(404).json({ success: false, message: "Current question not found in quiz." });
         }
 
+        let completedQuizDetails = {}
+        if (isCompleted) {
+            for (let i = 0; i < completedQuiz.questionsAns.length; i++) {
+                let objEle = completedQuiz.questionsAns[i]
+
+                if (objEle.questionId.toString() === currentQuestionId.toString()) {
+                    const question = await Question.findById(objEle.questionId);
+                    // console.log('HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH', objEle.ansOption, question.ansOption)
+                    completedQuizDetails.userAnsOption = objEle.ansOption
+                    completedQuizDetails.ansOption = question.ansOption
+                    break;
+                }
+            }
+
+            completedQuizDetails.isQuizCompleted = true
+        }
+
 
         const nextQuestion = await Question.findById(currentQuestionId);
 
@@ -557,6 +667,7 @@ export const reloadQuestion = async (req, res) => {
             categories: quiz.categories,
             category: categoryKey,
             questionsAns: currentQuiz.questionsAns,
+            completedQuizDetails: completedQuizDetails,
         });
 
     } catch (error) {
