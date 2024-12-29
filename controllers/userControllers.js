@@ -9,11 +9,11 @@ export const register = async (req, res) => {
         const { name, email, password, reyTypePassword } = req.body;
         // console.log(name, email, password, reyTypePassword)
         if (!name || !email || !password || !reyTypePassword) {
-            return res.status(400).json({ message: "Something went missing.", success: false });
+            return res.status(400).json({ message: "Something went missing.", missing: true, success: false });
         }
         const existUser = await User.findOne({ email: email });
         if (existUser) {
-            return res.status(400).json({ message: "User already exist with this email.", success: false });
+            return res.status(409).json({ message: "User already exist with this email.", missing: false, success: false });
         }
 
         const hashPassWord = await bcrypt.hash(password, 10);
@@ -40,7 +40,7 @@ export const register = async (req, res) => {
         // return res.status(200).json({ message: 'Account created successfully', success: true });
     } catch (e) {
         console.log('ERROR', e);
-        return res.status(500).json({ message: "Internal Server Error.", success: false });
+        return res.status(500).json({ message: "Internal Server Error.", missing: false, success: false });
     }
 }
 
@@ -101,16 +101,16 @@ export const login = async (req, res) => {
         const { email, password, } = req.body;
         // console.log(req.body, email, password)
         if (!email || !password) {
-            return res.status(400).json({ message: "Something went missing.", success: false });
+            return res.status(400).json({ message: "Something went missing.", missing: true, success: false });
         }
         let existUser = await User.findOne({ email: email });
         if (!existUser) {
-            return res.status(400).json({ message: "Incorrect email or password.", success: false });
+            return res.status(401).json({ message: "Incorrect credentials.", missing: false, success: false });
         }
 
         const isPasswordMatch = await bcrypt.compare(password, existUser.password);
         if (!isPasswordMatch) {
-            return res.status(400).json({ message: "Incorrect email or password.", success: false });
+            return res.status(401).json({ message: "Incorrect credentials.", missing: false, success: false });
         }
 
         const tokenData = {
@@ -129,7 +129,7 @@ export const login = async (req, res) => {
 
     } catch (e) {
         console.log('ERROR', e);
-        return res.status(500).json({ message: "Internal Server Error.", success: false });
+        return res.status(500).json({ message: "Internal Server Error.", missing: false, success: false });
     }
 }
 
@@ -145,27 +145,32 @@ export const authCheck = (req, res) => {
         else return res.status(401).json({ authenticated: false, message: 'Invalid token', success: false });
     } catch (error) {
         console.log(error);
-        res.status(401).json({ authenticated: false });
+        res.status(500).json({ message: "Internal Server Error.", authenticated: false, success: false });
     }
 };
 
 
 export const performance = async (req, res) => {
-    const userId = req.id;
-    // console.log(userId)
+    try {
+        const userId = req.id;
+        // console.log(userId)
 
-    // Fetch the user and check for currentQuiz
-    const user = await User.findById(userId)
+        // Fetch the user and check for currentQuiz
+        const user = await User.findById(userId)
 
-    if (!user) {
-        return res.status(404).json({ success: false, message: "User not found." });
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found." });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Usr performance details.",
+            user: user,
+        });
+    } catch (e) {
+        console.log('ERROR', e);
+        return res.status(500).json({ message: "Internal Server Error.", success: false });
     }
-
-    return res.status(200).json({
-        success: true,
-        message: "Usr performance details.",
-        user: user,
-    });
 
 }
 
